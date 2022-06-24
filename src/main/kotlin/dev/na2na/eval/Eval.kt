@@ -49,15 +49,29 @@ object Eval {
     private fun lexicalAnalysis(formula: String) {
         val sequenceList = formula.toCharArray()
         var setNumStr = ""
-        for (token in sequenceList) {
-            if ("+-*/".indexOf(token) > -1) {
+        var hasOffset = false
+        for ((count, token) in sequenceList.withIndex()) {
+            if (count != 0) {
+                if (token == '-' && "+-*/".indexOf(sequenceList[count - 1]) > -1) {
+                    hasOffset = true
+                }
+            }
+            if ("+-*/".indexOf(token) > -1 && count != 0 && (num_list.size != ope_list.size && num_list.size != 0)) {
                 ope_list.add(token)
                 num_list.add(setNumStr.toDouble())
                 setNumStr = ""
             } // 0-9と小数点も考慮する
-            else if ("0123456789.".indexOf(token) > -1) {
+            else if ("0123456789.".indexOf(token) > -1 || (count == 0 && token == '-') || hasOffset) {
                 // setNumStrに一文字追加する
                 setNumStr += token
+            } else {
+                if ("+-*/".indexOf(token) > -1 && setNumStr != "") {
+                    ope_list.add(token)
+                    num_list.add(setNumStr.toDouble())
+                    setNumStr = ""
+                } else {
+                    ope_list.add(token)
+                }
             }
         }
         // setNumStrの末尾が.の場合、0を追加する
@@ -65,7 +79,6 @@ object Eval {
             setNumStr += "0"
         }
         num_list.add(setNumStr.toDouble())
-
         // System.out.println("num:" + num_list + " / ope:" + ope_list);
     }
 
@@ -87,17 +100,23 @@ object Eval {
                 ope_list[hitId] = '@'
                 num1Id = hitId - hitCount
                 num2Id = hitId - hitCount + 1
+                var hasOffset = false
                 // "-"を含む数を検出したら、除去する
                 if (num_list[num1Id] < 0) {
                     num_list[num1Id] = -num_list[num1Id]
+                    hasOffset = true
                 }
                 if (num_list[num2Id] < 0) {
                     num_list[num2Id] = -num_list[num2Id]
+                    hasOffset = !hasOffset
                 }
 
                 num1Num = num_list[num1Id]
                 num2Num = num_list[num2Id]
                 setNum = if (token == '*') num1Num * num2Num else num1Num / num2Num
+                if (hasOffset) {
+                    setNum = -setNum
+                }
                 num_list[num1Id] = setNum
                 num_list.removeAt(num2Id)
                 hitCount++
